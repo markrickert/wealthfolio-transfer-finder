@@ -8,17 +8,21 @@ import {
   TableHeader,
   TableRow,
 } from "@wealthfolio/ui";
+import type { PrivacyLevel } from "../hooks/usePrivacyMode";
 import { TRANSFER_IN, TRANSFER_OUT } from "../lib/activityTypes";
 import type { ProposedPair } from "../types/pair";
 import { CONFIDENCE_BADGE, formatDate } from "../lib/transferScannerFormat";
 import type { ResolveDisplay } from "../lib/transferScannerTypes";
+
 function Leg({
   activity,
   groupKey,
+  privacyLevel,
   resolveDisplay,
 }: {
   activity: ProposedPair["legOut"];
   groupKey: string;
+  privacyLevel: PrivacyLevel;
   resolveDisplay: ResolveDisplay;
 }) {
   const { name, amountText } = resolveDisplay(activity, groupKey);
@@ -28,7 +32,7 @@ function Leg({
       <div className="text-sm text-muted-foreground">
         {formatDate(activity.date)} · {amountText}
       </div>
-      {activity.comment ? (
+      {privacyLevel !== "ultra" && activity.comment ? (
         <div className="text-xs text-muted-foreground italic">{activity.comment}</div>
       ) : null}
     </div>
@@ -67,12 +71,14 @@ export function PairTable({
   processingKeys,
   onApprove,
   onDismiss,
+  privacyLevel,
   resolveDisplay,
 }: {
   pairs: ProposedPair[];
   processingKeys: Set<string>;
   onApprove: (pair: ProposedPair) => void;
   onDismiss: (pair: ProposedPair) => void;
+  privacyLevel: PrivacyLevel;
   resolveDisplay: ResolveDisplay;
 }) {
   return (
@@ -103,7 +109,12 @@ export function PairTable({
                     resolveDisplay={resolveDisplay}
                   />
                 ) : (
-                  <Leg activity={pair.legOut} groupKey={pair.key} resolveDisplay={resolveDisplay} />
+                  <Leg
+                    activity={pair.legOut}
+                    groupKey={pair.key}
+                    privacyLevel={privacyLevel}
+                    resolveDisplay={resolveDisplay}
+                  />
                 )}
               </TableCell>
               <TableCell>
@@ -115,7 +126,12 @@ export function PairTable({
                     resolveDisplay={resolveDisplay}
                   />
                 ) : (
-                  <Leg activity={pair.legIn} groupKey={pair.key} resolveDisplay={resolveDisplay} />
+                  <Leg
+                    activity={pair.legIn}
+                    groupKey={pair.key}
+                    privacyLevel={privacyLevel}
+                    resolveDisplay={resolveDisplay}
+                  />
                 )}
               </TableCell>
               <TableCell className="max-w-xs">

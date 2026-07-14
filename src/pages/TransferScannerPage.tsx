@@ -69,16 +69,18 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
 
   async function approvePair(pair: ProposedPair) {
     setProcessingKeys((prev) => new Set(prev).add(pair.key));
+    const pairLabel =
+      privacyLevel === "ultra"
+        ? "transfer pair"
+        : `${pair.legOut.accountName} -> ${pair.legIn.accountName}`;
 
     try {
       await applyProposedPair(api, pair);
-      api.toast.success(`Linked ${pair.legOut.accountName} -> ${pair.legIn.accountName}`);
+      api.toast.success(`Linked ${pairLabel}`);
       setPairs((prev) => prev.filter((p) => p.key !== pair.key));
     } catch (err) {
       api.toast.error(
-        `Failed to link ${pair.legOut.accountName} -> ${pair.legIn.accountName}: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+        `Failed to link ${pairLabel}: ${err instanceof Error ? err.message : String(err)}`,
       );
     } finally {
       setProcessingKeys((prev) => {
@@ -167,6 +169,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                   processingKeys={processingKeys}
                   onApprove={handleApprove}
                   onDismiss={handleDismiss}
+                  privacyLevel={privacyLevel}
                   resolveDisplay={resolveDisplay}
                 />
               </CardContent>
@@ -192,6 +195,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                   processingKeys={processingKeys}
                   onApprove={handleApprove}
                   onDismiss={handleDismiss}
+                  privacyLevel={privacyLevel}
                   resolveDisplay={resolveDisplay}
                 />
               </CardContent>

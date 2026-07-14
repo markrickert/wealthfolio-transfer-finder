@@ -8,12 +8,26 @@ export function useResolveDisplay(privacyLevel: PrivacyLevel): ResolveDisplay {
   return useMemo(() => {
     const fakeName = createFakeNameGenerator();
     const fakeAmount = createFakeAmountGenerator();
+    const groupAnchorMagnitude = new Map<string, number>();
 
     return (activity, groupKey) => {
       if (privacyLevel === "ultra") {
+        const rawAmount = Number(activity.amount ?? 0);
+        const magnitude = Math.abs(rawAmount);
+        const anchorMagnitude = groupAnchorMagnitude.get(groupKey) ?? magnitude;
+        if (!groupAnchorMagnitude.has(groupKey)) {
+          groupAnchorMagnitude.set(groupKey, anchorMagnitude);
+        }
+
+        // Keep the real magnitude delta between legs so warning text like
+        // "Amount differs by X" still matches what is shown in ultra mode.
+        const baseMagnitude = fakeAmount(groupKey);
+        const disguisedMagnitude = Math.max(0.01, baseMagnitude + (magnitude - anchorMagnitude));
+        const disguisedAmount = rawAmount < 0 ? -disguisedMagnitude : disguisedMagnitude;
+
         return {
           name: fakeName(activity.accountId),
-          amountText: formatCurrency(fakeAmount(groupKey), activity.currency),
+          amountText: formatCurrency(disguisedAmount, activity.currency),
         };
       }
       if (privacyLevel === "hidden") {

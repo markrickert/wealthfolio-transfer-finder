@@ -41,11 +41,10 @@ export function createFakeNameGenerator(): (accountId: string) => string {
 }
 
 /**
- * Returns a function that maps a cache key to a stable fake dollar amount
- * (same shape/precision as a real transaction), for screenshot purposes.
- * Key this by the PAIR (e.g. pair.key), not by either leg's own activity ID -
- * both legs of a real transfer represent the same movement of money, so they
- * should show the same fake amount too, not two unrelated random numbers.
+ * Returns a function that maps a cache key to a stable fake base dollar
+ * magnitude for screenshot purposes. Key this by the PAIR (e.g. pair.key),
+ * not by either leg's own activity ID, so both legs share a coherent disguise
+ * and can preserve their real intra-pair amount delta in ultra privacy mode.
  */
 export function createFakeAmountGenerator(): (cacheKey: string) => number {
   const assigned = new Map<string, number>();
