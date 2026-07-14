@@ -1,5 +1,5 @@
-import type { ActivityDetails, HostAPI } from '@wealthfolio/addon-sdk';
-import { DEPOSIT, TRANSFER_IN, TRANSFER_OUT, WITHDRAWAL } from './activityTypes';
+import type { ActivityDetails, HostAPI } from "@wealthfolio/addon-sdk";
+import { DEPOSIT, TRANSFER_IN, TRANSFER_OUT, WITHDRAWAL } from "./activityTypes";
 
 const PAGE_SIZE = 500;
 
@@ -24,7 +24,7 @@ export async function fetchAllActivities(
       page,
       PAGE_SIZE,
       { activityTypes: RELEVANT_ACTIVITY_TYPES },
-      '',
+      "",
       undefined,
     );
     all.push(...response.data);

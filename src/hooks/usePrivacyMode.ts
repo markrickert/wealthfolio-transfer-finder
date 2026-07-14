@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { HostAPI } from '@wealthfolio/addon-sdk';
+import { useCallback, useEffect, useState } from "react";
+import type { HostAPI } from "@wealthfolio/addon-sdk";
 
-const STORAGE_KEY = 'privacy-mode';
+const STORAGE_KEY = "privacy-mode";
 
-export type PrivacyLevel = 'off' | 'hidden' | 'ultra';
+export type PrivacyLevel = "off" | "hidden" | "ultra";
 
 function isPrivacyLevel(value: string): value is PrivacyLevel {
-  return value === 'off' || value === 'hidden' || value === 'ultra';
+  return value === "off" || value === "hidden" || value === "ultra";
 }
 
 /**
@@ -23,7 +23,7 @@ function isPrivacyLevel(value: string): value is PrivacyLevel {
  *   screenshots without leaking real data (long-press).
  */
 export function usePrivacyMode(api: HostAPI) {
-  const [privacyLevel, setPrivacyLevelState] = useState<PrivacyLevel>('off');
+  const [privacyLevel, setPrivacyLevelState] = useState<PrivacyLevel>("off");
 
   useEffect(() => {
     let cancelled = false;
@@ -47,11 +47,11 @@ export function usePrivacyMode(api: HostAPI) {
   );
 
   const toggleHidden = useCallback(() => {
-    setPrivacyLevel(privacyLevel === 'off' ? 'hidden' : 'off');
+    setPrivacyLevel(privacyLevel === "off" ? "hidden" : "off");
   }, [privacyLevel, setPrivacyLevel]);
 
   const toggleUltra = useCallback(() => {
-    setPrivacyLevel(privacyLevel === 'ultra' ? 'off' : 'ultra');
+    setPrivacyLevel(privacyLevel === "ultra" ? "off" : "ultra");
   }, [privacyLevel, setPrivacyLevel]);
 
   return { privacyLevel, setPrivacyLevel, toggleHidden, toggleUltra };

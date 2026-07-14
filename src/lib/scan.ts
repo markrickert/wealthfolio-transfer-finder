@@ -1,8 +1,12 @@
-import type { HostAPI } from '@wealthfolio/addon-sdk';
-import { fetchAllActivities } from './fetchActivities';
-import { findLinkedTransferCandidates, findUnpairedTransferLegs, matchUnmarkedPairs } from './matcher';
-import type { MatchSettings, ProposedPair, ScanProgress } from '../types/pair';
-import { DEFAULT_SETTINGS } from '../types/pair';
+import type { HostAPI } from "@wealthfolio/addon-sdk";
+import { fetchAllActivities } from "./fetchActivities";
+import {
+  findLinkedTransferCandidates,
+  findUnpairedTransferLegs,
+  matchUnmarkedPairs,
+} from "./matcher";
+import type { MatchSettings, ProposedPair, ScanProgress } from "../types/pair";
+import { DEFAULT_SETTINGS } from "../types/pair";
 
 export type { ScanProgress };
 
@@ -30,7 +34,7 @@ export async function scanForTransferPairs(
   onProgress?: (progress: ScanProgress) => void,
 ): Promise<ProposedPair[]> {
   const activities = await fetchAllActivities(api, (loaded, total) =>
-    onProgress?.({ stage: 'fetching', current: loaded, total }),
+    onProgress?.({ stage: "fetching", current: loaded, total }),
   );
 
   // Each phase below reports its own progress starting at 0 - offset by the
@@ -55,12 +59,17 @@ export async function scanForTransferPairs(
   // including mixed pairs against an unpaired transfer leg) both consume the
   // same unpaired-legs result computed once above.
   const [linkedCandidates, unmarkedPairs] = await Promise.all([
-    findLinkedTransferCandidates(api, activities, unpaired, settings, (progress) =>
-      onProgress?.({
-        stage: progress.stage,
-        current: matchingBase + progress.current,
-        total: matchingBase + progress.total,
-      }),
+    findLinkedTransferCandidates(
+      api,
+      activities,
+      unpaired,
+      settings,
+      (progress) =>
+        onProgress?.({
+          stage: progress.stage,
+          current: matchingBase + progress.current,
+          total: matchingBase + progress.total,
+        }),
       dismissed,
     ),
     Promise.resolve(matchUnmarkedPairs(activities, settings, dismissed, unpaired.ids)),

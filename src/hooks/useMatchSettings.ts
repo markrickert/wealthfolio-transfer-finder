@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { HostAPI } from '@wealthfolio/addon-sdk';
-import { DEFAULT_SETTINGS, type MatchSettings } from '../types/pair';
+import { useCallback, useEffect, useState } from "react";
+import type { HostAPI } from "@wealthfolio/addon-sdk";
+import { DEFAULT_SETTINGS, type MatchSettings } from "../types/pair";
 
-const STORAGE_KEY = 'match-settings';
+const STORAGE_KEY = "match-settings";
 
 export function useMatchSettings(api: HostAPI) {
   const [settings, setSettingsState] = useState<MatchSettings>(DEFAULT_SETTINGS);

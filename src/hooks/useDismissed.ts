@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { HostAPI } from '@wealthfolio/addon-sdk';
+import { useCallback, useEffect, useState } from "react";
+import type { HostAPI } from "@wealthfolio/addon-sdk";
 
-const STORAGE_KEY = 'dismissed-pairs';
+const STORAGE_KEY = "dismissed-pairs";
 
 /** Persists dismissed pair keys via ctx.api.storage so re-scans don't resurface them. */
 export function useDismissed(api: HostAPI) {

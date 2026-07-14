@@ -1,6 +1,11 @@
-import { QueryKeys, type ActivityDetails, type ActivityUpdate, type HostAPI } from '@wealthfolio/addon-sdk';
-import { TRANSFER_IN, TRANSFER_OUT } from './activityTypes';
-import type { ProposedPair } from '../types/pair';
+import {
+  QueryKeys,
+  type ActivityDetails,
+  type ActivityUpdate,
+  type HostAPI,
+} from "@wealthfolio/addon-sdk";
+import { TRANSFER_IN, TRANSFER_OUT } from "./activityTypes";
+import type { ProposedPair } from "../types/pair";
 
 function toActivityUpdate(activity: ActivityDetails, activityType: string): ActivityUpdate {
   return {

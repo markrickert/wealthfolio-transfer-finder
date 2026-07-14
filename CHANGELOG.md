@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Initial addon structure and setup
 
 ### Changed
@@ -23,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - {{currentDate}}
 
 ### Added
+
 - Initial release of wealthfolio_transfers addon
 - Basic addon functionality and core features
 - Integration with Wealthfolio addon SDK v1.0.0
@@ -30,9 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Responsive design for all screen sizes
 
 ### Features
+
 - Scan transactions for unmarked transfer pairs and link them
 - User-friendly interface
 - Compatible with Wealthfolio platform
 
 ### Permissions
+
 - UI components access for sidebar and routing

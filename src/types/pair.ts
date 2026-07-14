@@ -1,6 +1,6 @@
-import type { ActivityDetails } from '@wealthfolio/addon-sdk';
+import type { ActivityDetails } from "@wealthfolio/addon-sdk";
 
-export type MatchConfidence = 'high' | 'medium' | 'low';
+export type MatchConfidence = "high" | "medium" | "low";
 
 /**
  * 'reclassify' pairs need at least one leg's activityType changed to
@@ -11,7 +11,7 @@ export type MatchConfidence = 'high' | 'medium' | 'low';
  * 'linked-candidate' pairs are already TRANSFER_IN/TRANSFER_OUT on both legs
  * and only need linkTransfer().
  */
-export type MatchSource = 'reclassify' | 'linked-candidate';
+export type MatchSource = "reclassify" | "linked-candidate";
 
 export interface ProposedPair {
   key: string;
@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS: MatchSettings = {
 };
 
 export function pairKey(idA: string, idB: string): string {
-  return [idA, idB].sort().join(':');
+  return [idA, idB].sort().join(":");
 }
 
 /**
@@ -50,7 +50,7 @@ export function pairKey(idA: string, idB: string): string {
  * per-stage total.
  */
 export interface ScanProgress {
-  stage: 'fetching' | 'checking-pairs' | 'matching';
+  stage: "fetching" | "checking-pairs" | "matching";
   current: number;
   total: number;
 }
