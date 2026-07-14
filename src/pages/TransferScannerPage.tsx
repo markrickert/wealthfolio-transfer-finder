@@ -21,12 +21,14 @@ import {
 } from "@wealthfolio/ui";
 import { useDismissed } from "../hooks/useDismissed";
 import { useMatchSettings } from "../hooks/useMatchSettings";
+import { usePrivacyMode } from "../hooks/usePrivacyMode";
 import { TRANSFER_IN, TRANSFER_OUT } from "../lib/activityTypes";
 import { scanForTransferPairs } from "../lib/scan";
 import { applyProposedPair } from "../lib/apply";
 import type { ProposedPair, ScanProgress } from "../types/pair";
 
-function formatAmount(amount: string | null, currency: string): string {
+function formatAmount(amount: string | null, currency: string, hidden: boolean): string {
+  if (hidden) return "••••";
   const value = Number(amount ?? 0);
   try {
     return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
@@ -62,12 +64,12 @@ const CONFIDENCE_BADGE: Record<ProposedPair["confidence"], "success" | "warning"
   low: "outline",
 };
 
-function Leg({ activity }: { activity: ProposedPair["legOut"] }) {
+function Leg({ activity, hidden }: { activity: ProposedPair["legOut"]; hidden: boolean }) {
   return (
     <div className="space-y-0.5">
       <div className="font-medium">{activity.accountName}</div>
       <div className="text-sm text-muted-foreground">
-        {formatDate(activity.date)} · {formatAmount(activity.amount, activity.currency)}
+        {formatDate(activity.date)} · {formatAmount(activity.amount, activity.currency, hidden)}
       </div>
       {activity.comment ? (
         <div className="text-xs text-muted-foreground italic">{activity.comment}</div>
@@ -76,13 +78,21 @@ function Leg({ activity }: { activity: ProposedPair["legOut"] }) {
   );
 }
 
-function LegChange({ activity, newType }: { activity: ProposedPair["legOut"]; newType: string }) {
+function LegChange({
+  activity,
+  newType,
+  hidden,
+}: {
+  activity: ProposedPair["legOut"];
+  newType: string;
+  hidden: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
       <div>
         <div className="font-medium">{activity.accountName}</div>
         <div className="text-xs text-muted-foreground">
-          {formatDate(activity.date)} · {formatAmount(activity.amount, activity.currency)}
+          {formatDate(activity.date)} · {formatAmount(activity.amount, activity.currency, hidden)}
         </div>
       </div>
       <div className="text-xs text-right whitespace-nowrap">
@@ -99,13 +109,13 @@ function PairTable({
   processingKeys,
   onApprove,
   onDismiss,
-  reclassify,
+  privacyMode,
 }: {
   pairs: ProposedPair[];
   processingKeys: Set<string>;
   onApprove: (pair: ProposedPair) => void;
   onDismiss: (pair: ProposedPair) => void;
-  reclassify: boolean;
+  privacyMode: boolean;
 }) {
   return (
     <Table>
@@ -127,17 +137,17 @@ function PairTable({
                 <Badge variant={CONFIDENCE_BADGE[pair.confidence]}>{pair.confidence}</Badge>
               </TableCell>
               <TableCell>
-                {reclassify ? (
-                  <LegChange activity={pair.legOut} newType={TRANSFER_OUT} />
+                {pair.reclassifyOut ? (
+                  <LegChange activity={pair.legOut} newType={TRANSFER_OUT} hidden={privacyMode} />
                 ) : (
-                  <Leg activity={pair.legOut} />
+                  <Leg activity={pair.legOut} hidden={privacyMode} />
                 )}
               </TableCell>
               <TableCell>
-                {reclassify ? (
-                  <LegChange activity={pair.legIn} newType={TRANSFER_IN} />
+                {pair.reclassifyIn ? (
+                  <LegChange activity={pair.legIn} newType={TRANSFER_IN} hidden={privacyMode} />
                 ) : (
-                  <Leg activity={pair.legIn} />
+                  <Leg activity={pair.legIn} hidden={privacyMode} />
                 )}
               </TableCell>
               <TableCell className="max-w-xs">
@@ -253,6 +263,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
   const api = ctx.api;
   const { dismissed, dismiss, loaded: dismissedLoaded } = useDismissed(api);
   const { settings, setSettings } = useMatchSettings(api);
+  const { privacyMode, setPrivacyMode } = usePrivacyMode(api);
 
   const [pairs, setPairs] = useState<ProposedPair[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -325,13 +336,24 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
   return (
     <div className="p-6 space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Transfer Pairing</CardTitle>
-          <CardDescription>
-            Scan transactions for internal transfers that aren&apos;t linked yet - including plain
-            deposits/withdrawals that were never classified as transfers - and review each match
-            before linking.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>Transfer Pairing</CardTitle>
+            <CardDescription>
+              Scan transactions for internal transfers that aren&apos;t linked yet - including plain
+              deposits/withdrawals that were never classified as transfers - and review each match
+              before linking.
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            aria-label={privacyMode ? "Show amounts" : "Hide amounts"}
+            onClick={() => setPrivacyMode(!privacyMode)}
+          >
+            {privacyMode ? <Icons.EyeOff className="h-4 w-4" /> : <Icons.Eye className="h-4 w-4" />}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-4">
@@ -407,7 +429,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                   processingKeys={processingKeys}
                   onApprove={handleApprove}
                   onDismiss={handleDismiss}
-                  reclassify={false}
+                  privacyMode={privacyMode}
                 />
               </CardContent>
             </Card>
@@ -420,8 +442,8 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                 <CardDescription className="flex items-start gap-2">
                   <Icons.AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning" />
                   <span>
-                    Approving will reclassify WITHDRAWAL/DEPOSIT pairs to TRANSFER_OUT/TRANSFER_IN
-                    before linking. Unlinking later removes the pairing but does
+                    Approving will reclassify the untyped leg(s) to TRANSFER_OUT/TRANSFER_IN before
+                    linking. Unlinking later removes the pairing but does
                     <strong> not</strong> revert the type change.
                   </span>
                 </CardDescription>
@@ -432,7 +454,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                   processingKeys={processingKeys}
                   onApprove={handleApprove}
                   onDismiss={handleDismiss}
-                  reclassify={true}
+                  privacyMode={privacyMode}
                 />
               </CardContent>
             </Card>
