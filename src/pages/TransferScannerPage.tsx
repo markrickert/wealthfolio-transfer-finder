@@ -203,17 +203,15 @@ function LegChange({
 }) {
   const { name, amountText } = resolveDisplay(activity, groupKey);
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
-      <div>
-        <div className="font-medium">{name}</div>
-        <div className="text-xs text-muted-foreground">
-          {formatDate(activity.date)} · {amountText}
-        </div>
+    <div className="space-y-0.5 text-sm">
+      <div className="font-medium">{name}</div>
+      <div className="text-xs text-muted-foreground">
+        {formatDate(activity.date)} · {amountText} ·{" "}
       </div>
-      <div className="text-xs text-right whitespace-nowrap">
-        <span className="text-muted-foreground line-through">{activity.activityType}</span>
+      <div className="text-xs text-muted-foreground">
+        <span className="line-through">{activity.activityType}</span>
         {" → "}
-        <span className="font-medium">{newType}</span>
+        <span className="font-medium text-foreground">{newType}</span>
       </div>
     </div>
   );
@@ -237,8 +235,8 @@ function PairTable({
       <TableHeader>
         <TableRow>
           <TableHead>Confidence</TableHead>
-          <TableHead>Outflow</TableHead>
-          <TableHead>Inflow</TableHead>
+          <TableHead className="w-64">Outflow</TableHead>
+          <TableHead className="w-64">Inflow</TableHead>
           <TableHead>Details</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -378,7 +376,9 @@ function FadeIn({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className={`space-y-4 transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}>
+    <div
+      className={`space-y-4 transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}
+    >
       {children}
     </div>
   );
@@ -521,7 +521,9 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
             {scanProgress ? (
               <div className="w-full max-w-xs space-y-1">
                 <Progress value={scanProgressPercent(scanProgress)} />
-                <div className="text-xs text-muted-foreground">{formatScanProgress(scanProgress)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {formatScanProgress(scanProgress)}
+                </div>
               </div>
             ) : null}
           </CardContent>
@@ -533,7 +535,9 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
             <CardContent className="py-16 flex flex-col items-center justify-center gap-2 text-center">
               <Icons.CheckCircle className="h-10 w-10 text-success" />
               <h2 className="text-xl font-semibold">All caught up!</h2>
-              <p className="text-sm text-muted-foreground">No unmarked transfer pairs left to review.</p>
+              <p className="text-sm text-muted-foreground">
+                No unmarked transfer pairs left to review.
+              </p>
             </CardContent>
           </Card>
         </FadeIn>

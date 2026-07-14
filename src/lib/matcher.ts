@@ -71,7 +71,7 @@ function describe(candidate: Candidate): { reasons: string[]; warnings: string[]
   if (candidate.amountDiff === 0) {
     reasons.push("Exact amount");
   } else {
-    warnings.push(`Amount differs by ${candidate.amountDiff.toFixed(2)} (within tolerance)`);
+    warnings.push(`Amount differs by ${candidate.amountDiff.toFixed(2)}`);
   }
 
   if (candidate.dayDiff === 0) {
