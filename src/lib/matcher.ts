@@ -81,8 +81,15 @@ function describe(candidate: Candidate): { reasons: string[]; warnings: string[]
 }
 
 /**
- * Path B: WITHDRAWAL/DEPOSIT legs across different accounts that look like
- * the same real-world transfer but were never classified as one.
+ * Path B: DEPOSIT/WITHDRAWAL legs that look like the same real-world
+ * transfer but were never classified as one - including MIXED pairs where
+ * one leg is already TRANSFER_IN/TRANSFER_OUT (but not yet linked to
+ * anything) and the other is still a plain DEPOSIT/WITHDRAWAL. Only the
+ * plain leg(s) need reclassifying in that case; see reclassifyOut/In.
+ *
+ * The pure TRANSFER_OUT+TRANSFER_IN combination is deliberately excluded -
+ * that's handled by findLinkedTransferCandidates (Path A) using the host's
+ * own matcher instead of this heuristic.
  *
  * Greedily assigns by nearest date-diff first (globally across the currency
  * bucket, not a naive left-to-right scan) so that recurring same-amount
@@ -99,9 +106,14 @@ export function matchUnmarkedPairs(
   activities: ActivityDetails[],
   settings: MatchSettings = DEFAULT_SETTINGS,
   dismissed: ReadonlySet<string> = new Set(),
+  unpairedTransferIds: ReadonlySet<string> = new Set(),
 ): ProposedPair[] {
-  const outflows = activities.filter((a) => a.activityType === WITHDRAWAL);
-  const inflows = activities.filter((a) => a.activityType === DEPOSIT);
+  const outflows = activities.filter(
+    (a) => a.activityType === WITHDRAWAL || (a.activityType === TRANSFER_OUT && unpairedTransferIds.has(a.id)),
+  );
+  const inflows = activities.filter(
+    (a) => a.activityType === DEPOSIT || (a.activityType === TRANSFER_IN && unpairedTransferIds.has(a.id)),
+  );
 
   const inflowsByCurrency = new Map<string, ActivityDetails[]>();
   for (const inflow of inflows) {
@@ -127,6 +139,10 @@ export function matchUnmarkedPairs(
     for (let i = startIdx; i < bucket.length; i += 1) {
       const inflow = bucket[i];
       if (timeOf(inflow) > outTime + windowMs) break; // bucket is sorted - nothing further can be in range
+
+      // Both legs already transfer-typed is Path A's exclusive job (it uses
+      // the host's own matcher, which is more authoritative for that combo).
+      if (out.activityType === TRANSFER_OUT && inflow.activityType === TRANSFER_IN) continue;
 
       if (inflow.accountId === out.accountId) continue;
       if (dismissed.has(pairKey(out.id, inflow.id))) continue;
@@ -156,6 +172,8 @@ export function matchUnmarkedPairs(
     pairs.push({
       key: pairKey(candidate.out.id, candidate.in.id),
       source: 'reclassify',
+      reclassifyOut: candidate.out.activityType !== TRANSFER_OUT,
+      reclassifyIn: candidate.in.activityType !== TRANSFER_IN,
       legOut: candidate.out,
       legIn: candidate.in,
       confidence,
@@ -168,32 +186,28 @@ export function matchUnmarkedPairs(
   return pairs;
 }
 
+export interface UnpairedTransferLegs {
+  legs: ActivityDetails[];
+  ids: Set<string>;
+}
+
 /**
- * Path A: activities already typed TRANSFER_IN/TRANSFER_OUT but not yet
- * linked to a pair. Delegates matching/scoring to the host's own
- * findTransferMatchCandidates rather than reimplementing it - the addon's
- * job here is only to find which legs are unpaired and call linkTransfer.
- *
- * ActivityDetails carries no sourceGroupId (the SDK deliberately omits it),
- * so "already paired" is determined by calling getTransferPair per leg: it
- * rejects when the activity has no existing pair.
+ * Activities already typed TRANSFER_IN/TRANSFER_OUT but not yet linked to a
+ * pair. ActivityDetails carries no sourceGroupId (the SDK deliberately omits
+ * it), so "already paired" is determined by calling getTransferPair per leg:
+ * it rejects when the activity has no existing pair. Shared by Path A (which
+ * matches these against each other) and Path B (which matches them against
+ * plain DEPOSIT/WITHDRAWAL legs), so the check only runs once per scan.
  */
-export async function findLinkedTransferCandidates(
+export async function findUnpairedTransferLegs(
   api: HostAPI,
   activities: ActivityDetails[],
-  settings: MatchSettings = DEFAULT_SETTINGS,
   onProgress?: (progress: ScanProgress) => void,
-  dismissed: ReadonlySet<string> = new Set(),
-): Promise<ProposedPair[]> {
-  const byId = new Map(activities.map((a) => [a.id, a] as const));
+): Promise<UnpairedTransferLegs> {
   const transferLegs = activities.filter(
     (a) => a.activityType === TRANSFER_IN || a.activityType === TRANSFER_OUT,
   );
 
-  // Cumulative across both sub-phases below: current/total only grow. total
-  // steps up once matching starts, since unpaired.length isn't known until
-  // the checking-pairs phase above finishes - that's a real increase, not a
-  // reset.
   const unpaired: ActivityDetails[] = [];
   let checked = 0;
   await Promise.all(
@@ -210,18 +224,33 @@ export async function findLinkedTransferCandidates(
     }),
   );
 
-  const unpairedIds = new Set(unpaired.map((leg) => leg.id));
+  return { legs: unpaired, ids: new Set(unpaired.map((leg) => leg.id)) };
+}
+
+/**
+ * Path A: unpaired TRANSFER_IN/TRANSFER_OUT legs, matched against each other.
+ * Delegates matching/scoring to the host's own findTransferMatchCandidates
+ * rather than reimplementing it - the addon's job here is only to find which
+ * legs are unpaired (via `unpaired`, computed once by findUnpairedTransferLegs)
+ * and call linkTransfer.
+ */
+export async function findLinkedTransferCandidates(
+  api: HostAPI,
+  activities: ActivityDetails[],
+  unpaired: UnpairedTransferLegs,
+  settings: MatchSettings = DEFAULT_SETTINGS,
+  onProgress?: (progress: ScanProgress) => void,
+  dismissed: ReadonlySet<string> = new Set(),
+): Promise<ProposedPair[]> {
+  const byId = new Map(activities.map((a) => [a.id, a] as const));
+  const unpairedIds = unpaired.ids;
   const usedIds = new Set<string>();
   const pairs: ProposedPair[] = [];
 
   let matched = 0;
-  for (const leg of unpaired) {
+  for (const leg of unpaired.legs) {
     matched += 1;
-    onProgress?.({
-      stage: 'matching',
-      current: transferLegs.length + matched,
-      total: transferLegs.length + unpaired.length,
-    });
+    onProgress?.({ stage: 'matching', current: matched, total: unpaired.legs.length });
 
     if (usedIds.has(leg.id)) continue;
 
@@ -256,6 +285,8 @@ export async function findLinkedTransferCandidates(
     pairs.push({
       key: pairKey(leg.id, counterpart.id),
       source: 'linked-candidate',
+      reclassifyOut: false,
+      reclassifyIn: false,
       legOut,
       legIn,
       confidence: best.confidence,

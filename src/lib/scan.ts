@@ -1,13 +1,14 @@
 import type { HostAPI } from '@wealthfolio/addon-sdk';
 import { fetchAllActivities } from './fetchActivities';
-import { findLinkedTransferCandidates, matchUnmarkedPairs } from './matcher';
+import { findLinkedTransferCandidates, findUnpairedTransferLegs, matchUnmarkedPairs } from './matcher';
 import type { MatchSettings, ProposedPair, ScanProgress } from '../types/pair';
 import { DEFAULT_SETTINGS } from '../types/pair';
 
 export type { ScanProgress };
 
-/** Merges pair lists (Path A + Path B are disjoint by activity type, but this
- * guards against it anyway), drops anything already dismissed, first match wins. */
+/** Merges pair lists (Path A + Path B can't both propose the same key by
+ * construction, but this guards against it anyway), drops anything already
+ * dismissed, first match wins. */
 export function combineProposedPairs(
   pairLists: ProposedPair[][],
   dismissed: ReadonlySet<string> = new Set(),
@@ -32,25 +33,37 @@ export async function scanForTransferPairs(
     onProgress?.({ stage: 'fetching', current: loaded, total }),
   );
 
-  // findLinkedTransferCandidates reports its own cumulative progress starting
-  // at 0 - offset it by the activities already fetched so the whole scan is
-  // one continuous current/total range instead of resetting per phase.
+  // Each phase below reports its own progress starting at 0 - offset by the
+  // prior phases' totals so the whole scan is one continuous current/total
+  // range instead of resetting per phase.
   const fetchedCount = activities.length;
+  let transferLegsTotal = 0;
 
+  const unpaired = await findUnpairedTransferLegs(api, activities, (progress) => {
+    transferLegsTotal = progress.total;
+    onProgress?.({
+      stage: progress.stage,
+      current: fetchedCount + progress.current,
+      total: fetchedCount + progress.total,
+    });
+  });
+
+  const matchingBase = fetchedCount + transferLegsTotal;
+
+  // findLinkedTransferCandidates (Path A: unpaired transfer legs against each
+  // other) and matchUnmarkedPairs (Path B: plain deposit/withdrawal legs,
+  // including mixed pairs against an unpaired transfer leg) both consume the
+  // same unpaired-legs result computed once above.
   const [linkedCandidates, unmarkedPairs] = await Promise.all([
-    findLinkedTransferCandidates(
-      api,
-      activities,
-      settings,
-      (progress) =>
-        onProgress?.({
-          stage: progress.stage,
-          current: fetchedCount + progress.current,
-          total: fetchedCount + progress.total,
-        }),
+    findLinkedTransferCandidates(api, activities, unpaired, settings, (progress) =>
+      onProgress?.({
+        stage: progress.stage,
+        current: matchingBase + progress.current,
+        total: matchingBase + progress.total,
+      }),
       dismissed,
     ),
-    Promise.resolve(matchUnmarkedPairs(activities, settings, dismissed)),
+    Promise.resolve(matchUnmarkedPairs(activities, settings, dismissed, unpaired.ids)),
   ]);
 
   return combineProposedPairs([linkedCandidates, unmarkedPairs], dismissed);

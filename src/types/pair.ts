@@ -3,16 +3,23 @@ import type { ActivityDetails } from '@wealthfolio/addon-sdk';
 export type MatchConfidence = 'high' | 'medium' | 'low';
 
 /**
- * 'reclassify' pairs are DEPOSIT/WITHDRAWAL legs that must have their
- * activityType changed to TRANSFER_IN/TRANSFER_OUT before they can be linked.
- * 'linked-candidate' pairs are already TRANSFER_IN/TRANSFER_OUT and only need
- * linkTransfer().
+ * 'reclassify' pairs need at least one leg's activityType changed to
+ * TRANSFER_OUT/TRANSFER_IN before they can be linked - see reclassifyOut/
+ * reclassifyIn for which leg(s). This includes mixed pairs (one leg already
+ * a transfer, the other still a plain DEPOSIT/WITHDRAWAL), not just pairs
+ * where both legs need reclassifying.
+ * 'linked-candidate' pairs are already TRANSFER_IN/TRANSFER_OUT on both legs
+ * and only need linkTransfer().
  */
 export type MatchSource = 'reclassify' | 'linked-candidate';
 
 export interface ProposedPair {
   key: string;
   source: MatchSource;
+  /** Does legOut need its activityType changed to TRANSFER_OUT before linking? */
+  reclassifyOut: boolean;
+  /** Does legIn need its activityType changed to TRANSFER_IN before linking? */
+  reclassifyIn: boolean;
   legOut: ActivityDetails;
   legIn: ActivityDetails;
   confidence: MatchConfidence;

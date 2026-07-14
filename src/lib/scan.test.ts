@@ -6,6 +6,8 @@ function pair(key: string): ProposedPair {
   return {
     key,
     source: 'reclassify',
+    reclassifyOut: true,
+    reclassifyIn: true,
     legOut: {} as ProposedPair['legOut'],
     legIn: {} as ProposedPair['legIn'],
     confidence: 'high',

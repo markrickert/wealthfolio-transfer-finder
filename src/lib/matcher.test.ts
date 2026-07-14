@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ActivityType, ActivityDetails } from '@wealthfolio/addon-sdk';
-import { BUY, DEPOSIT, WITHDRAWAL } from './activityTypes';
+import { BUY, DEPOSIT, TRANSFER_IN, TRANSFER_OUT, WITHDRAWAL } from './activityTypes';
 import { matchUnmarkedPairs } from './matcher';
 
 let counter = 0;
@@ -125,5 +125,41 @@ describe('matchUnmarkedPairs', () => {
     const byOutId = new Map(pairs.map((p) => [p.legOut.id, p.legIn.id]));
     expect(byOutId.get('out-day0')).toBe('in-day1');
     expect(byOutId.get('out-day10')).toBe('in-day11');
+  });
+
+  it('matches a mixed pair (unpaired TRANSFER_OUT + plain DEPOSIT), reclassifying only the deposit', () => {
+    const out = activity({ type: TRANSFER_OUT, accountId: 'checking', amount: 500, day: 0 });
+    const d = activity({ type: DEPOSIT, accountId: 'savings', amount: 500, day: 0 });
+
+    const pairs = matchUnmarkedPairs([out, d], { windowDays: 5, amountTolerance: 1 }, new Set(), new Set([out.id]));
+
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].reclassifyOut).toBe(false);
+    expect(pairs[0].reclassifyIn).toBe(true);
+  });
+
+  it('matches a mixed pair (plain WITHDRAWAL + unpaired TRANSFER_IN), reclassifying only the withdrawal', () => {
+    const w = activity({ type: WITHDRAWAL, accountId: 'checking', amount: 500, day: 0 });
+    const in_ = activity({ type: TRANSFER_IN, accountId: 'savings', amount: 500, day: 0 });
+
+    const pairs = matchUnmarkedPairs([w, in_], { windowDays: 5, amountTolerance: 1 }, new Set(), new Set([in_.id]));
+
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].reclassifyOut).toBe(true);
+    expect(pairs[0].reclassifyIn).toBe(false);
+  });
+
+  it('never proposes a pure TRANSFER_OUT/TRANSFER_IN combo - that is findLinkedTransferCandidates\' job', () => {
+    const out = activity({ type: TRANSFER_OUT, accountId: 'checking', amount: 500, day: 0 });
+    const in_ = activity({ type: TRANSFER_IN, accountId: 'savings', amount: 500, day: 0 });
+
+    const pairs = matchUnmarkedPairs(
+      [out, in_],
+      { windowDays: 5, amountTolerance: 1 },
+      new Set(),
+      new Set([out.id, in_.id]),
+    );
+
+    expect(pairs).toHaveLength(0);
   });
 });

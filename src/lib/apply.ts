@@ -23,13 +23,16 @@ function toActivityUpdate(activity: ActivityDetails, activityType: string): Acti
 }
 
 /**
- * Applies one proposed pair: for 'reclassify' pairs, retypes both legs to
+ * Applies one proposed pair: retypes whichever leg(s) need it to
  * TRANSFER_OUT/TRANSFER_IN first (this is NOT undone by unlinkTransfer - the
- * type change persists even after unlinking). Then links the pair.
+ * type change persists even after unlinking). A mixed pair only reclassifies
+ * the one leg that isn't already a transfer type. Then links the pair.
  */
 export async function applyProposedPair(api: HostAPI, pair: ProposedPair): Promise<void> {
-  if (pair.source === 'reclassify') {
+  if (pair.reclassifyOut) {
     await api.activities.update(toActivityUpdate(pair.legOut, TRANSFER_OUT));
+  }
+  if (pair.reclassifyIn) {
     await api.activities.update(toActivityUpdate(pair.legIn, TRANSFER_IN));
   }
 
