@@ -7,3 +7,7 @@ It scans cash-movement activities, proposes matches, and supports linking pairs 
 ## Requirement
 
 This addon requires the Wealthfolio transaction-linking addon API changes proposed in PR #1307 - https://github.com/wealthfolio/wealthfolio/pull/1307
+
+## Preview
+
+![Transfer Finder demo](images/transfer-finder.gif)
