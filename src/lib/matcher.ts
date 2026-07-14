@@ -1,12 +1,12 @@
-import type { ActivityDetails, HostAPI } from '@wealthfolio/addon-sdk';
-import { DEPOSIT, TRANSFER_IN, TRANSFER_OUT, WITHDRAWAL } from './activityTypes';
+import type { ActivityDetails, HostAPI } from "@wealthfolio/addon-sdk";
+import { DEPOSIT, TRANSFER_IN, TRANSFER_OUT, WITHDRAWAL } from "./activityTypes";
 import {
   DEFAULT_SETTINGS,
   pairKey,
   type MatchSettings,
   type ProposedPair,
   type ScanProgress,
-} from '../types/pair';
+} from "../types/pair";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -51,14 +51,17 @@ interface Candidate {
   dayDiff: number;
 }
 
-function confidenceFor(amountDiff: number, dayDiff: number): { confidence: ProposedPair['confidence']; score: number } {
+function confidenceFor(
+  amountDiff: number,
+  dayDiff: number,
+): { confidence: ProposedPair["confidence"]; score: number } {
   if (amountDiff === 0 && dayDiff === 0) {
-    return { confidence: 'high', score: 100 };
+    return { confidence: "high", score: 100 };
   }
   if (amountDiff === 0) {
-    return { confidence: 'medium', score: Math.max(50, 90 - dayDiff * 8) };
+    return { confidence: "medium", score: Math.max(50, 90 - dayDiff * 8) };
   }
-  return { confidence: 'low', score: Math.max(10, 60 - dayDiff * 8) };
+  return { confidence: "low", score: Math.max(10, 60 - dayDiff * 8) };
 }
 
 function describe(candidate: Candidate): { reasons: string[]; warnings: string[] } {
@@ -66,13 +69,13 @@ function describe(candidate: Candidate): { reasons: string[]; warnings: string[]
   const warnings: string[] = [];
 
   if (candidate.amountDiff === 0) {
-    reasons.push('Exact amount match');
+    reasons.push("Exact amount");
   } else {
     warnings.push(`Amount differs by ${candidate.amountDiff.toFixed(2)} (within tolerance)`);
   }
 
   if (candidate.dayDiff === 0) {
-    reasons.push('Same day');
+    reasons.push("Same day");
   } else {
     reasons.push(`${Math.round(candidate.dayDiff)} day(s) apart`);
   }
@@ -109,10 +112,14 @@ export function matchUnmarkedPairs(
   unpairedTransferIds: ReadonlySet<string> = new Set(),
 ): ProposedPair[] {
   const outflows = activities.filter(
-    (a) => a.activityType === WITHDRAWAL || (a.activityType === TRANSFER_OUT && unpairedTransferIds.has(a.id)),
+    (a) =>
+      a.activityType === WITHDRAWAL ||
+      (a.activityType === TRANSFER_OUT && unpairedTransferIds.has(a.id)),
   );
   const inflows = activities.filter(
-    (a) => a.activityType === DEPOSIT || (a.activityType === TRANSFER_IN && unpairedTransferIds.has(a.id)),
+    (a) =>
+      a.activityType === DEPOSIT ||
+      (a.activityType === TRANSFER_IN && unpairedTransferIds.has(a.id)),
   );
 
   const inflowsByCurrency = new Map<string, ActivityDetails[]>();
@@ -171,7 +178,7 @@ export function matchUnmarkedPairs(
 
     pairs.push({
       key: pairKey(candidate.out.id, candidate.in.id),
-      source: 'reclassify',
+      source: "reclassify",
       reclassifyOut: candidate.out.activityType !== TRANSFER_OUT,
       reclassifyIn: candidate.in.activityType !== TRANSFER_IN,
       legOut: candidate.out,
@@ -219,7 +226,7 @@ export async function findUnpairedTransferLegs(
         unpaired.push(leg);
       } finally {
         checked += 1;
-        onProgress?.({ stage: 'checking-pairs', current: checked, total: transferLegs.length });
+        onProgress?.({ stage: "checking-pairs", current: checked, total: transferLegs.length });
       }
     }),
   );
@@ -250,7 +257,7 @@ export async function findLinkedTransferCandidates(
   let matched = 0;
   for (const leg of unpaired.legs) {
     matched += 1;
-    onProgress?.({ stage: 'matching', current: matched, total: unpaired.legs.length });
+    onProgress?.({ stage: "matching", current: matched, total: unpaired.legs.length });
 
     if (usedIds.has(leg.id)) continue;
 
@@ -280,11 +287,12 @@ export async function findLinkedTransferCandidates(
     usedIds.add(leg.id);
     usedIds.add(counterpart.id);
 
-    const [legOut, legIn] = leg.activityType === TRANSFER_OUT ? [leg, counterpart] : [counterpart, leg];
+    const [legOut, legIn] =
+      leg.activityType === TRANSFER_OUT ? [leg, counterpart] : [counterpart, leg];
 
     pairs.push({
       key: pairKey(leg.id, counterpart.id),
-      source: 'linked-candidate',
+      source: "linked-candidate",
       reclassifyOut: false,
       reclassifyIn: false,
       legOut,

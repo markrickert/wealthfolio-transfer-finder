@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { AddonContext } from "@wealthfolio/addon-sdk";
 import {
   Badge,
@@ -21,20 +21,123 @@ import {
 } from "@wealthfolio/ui";
 import { useDismissed } from "../hooks/useDismissed";
 import { useMatchSettings } from "../hooks/useMatchSettings";
-import { usePrivacyMode } from "../hooks/usePrivacyMode";
+import { usePrivacyMode, type PrivacyLevel } from "../hooks/usePrivacyMode";
 import { TRANSFER_IN, TRANSFER_OUT } from "../lib/activityTypes";
+import { createFakeAmountGenerator, createFakeNameGenerator } from "../lib/fakeData";
 import { scanForTransferPairs } from "../lib/scan";
 import { applyProposedPair } from "../lib/apply";
 import type { ProposedPair, ScanProgress } from "../types/pair";
 
-function formatAmount(amount: string | null, currency: string, hidden: boolean): string {
-  if (hidden) return "••••";
-  const value = Number(amount ?? 0);
+function formatCurrency(value: number, currency: string): string {
   try {
     return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
   } catch {
     return `${value.toFixed(2)} ${currency}`;
   }
+}
+
+// groupKey should be the pair's key, not either leg's own activity ID - both
+// legs of a real transfer represent the same movement of money, so in ultra
+// mode they must show the same fake amount, not two unrelated random ones.
+type ResolveDisplay = (
+  activity: ProposedPair["legOut"],
+  groupKey: string,
+) => { name: string; amountText: string };
+
+function useResolveDisplay(privacyLevel: PrivacyLevel): ResolveDisplay {
+  return useMemo(() => {
+    const fakeName = createFakeNameGenerator();
+    const fakeAmount = createFakeAmountGenerator();
+
+    return (activity, groupKey) => {
+      if (privacyLevel === "ultra") {
+        return {
+          name: fakeName(activity.accountId),
+          amountText: formatCurrency(fakeAmount(groupKey), activity.currency),
+        };
+      }
+      if (privacyLevel === "hidden") {
+        return { name: activity.accountName, amountText: "••••" };
+      }
+      return {
+        name: activity.accountName,
+        amountText: formatCurrency(Number(activity.amount ?? 0), activity.currency),
+      };
+    };
+    // A fresh privacyLevel value (e.g. re-entering 'ultra') gets brand new fake
+    // name/amount generators, so each activation shows a different disguise.
+  }, [privacyLevel]);
+}
+
+const LONG_PRESS_MS = 500;
+
+/** Click toggles normal ("••••") privacy; press-and-hold toggles ultra
+ * privacy (fake institution names + fake amounts, for screenshots). */
+function PrivacyToggleButton({
+  privacyLevel,
+  toggleHidden,
+  toggleUltra,
+}: {
+  privacyLevel: PrivacyLevel;
+  toggleHidden: () => void;
+  toggleUltra: () => void;
+}) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  function startPress() {
+    longPressFiredRef.current = false;
+    timerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      toggleUltra();
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelPress() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  function handleClick() {
+    // A long-press still fires a trailing click on release - swallow that
+    // one so it doesn't also toggle normal privacy.
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    toggleHidden();
+  }
+
+  const label =
+    privacyLevel === "off"
+      ? "Hide amounts (hold for ultra privacy)"
+      : privacyLevel === "hidden"
+        ? "Show amounts"
+        : "Exit ultra privacy";
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="shrink-0"
+      aria-label={label}
+      title={label}
+      onPointerDown={startPress}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
+      onPointerCancel={cancelPress}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={handleClick}
+    >
+      {privacyLevel === "off" ? (
+        <Icons.Eye className="h-4 w-4" />
+      ) : (
+        <Icons.EyeOff className={`h-4 w-4 ${privacyLevel === "ultra" ? "text-primary" : ""}`} />
+      )}
+    </Button>
+  );
 }
 
 function formatDate(date: Date): string {
@@ -64,12 +167,21 @@ const CONFIDENCE_BADGE: Record<ProposedPair["confidence"], "success" | "warning"
   low: "outline",
 };
 
-function Leg({ activity, hidden }: { activity: ProposedPair["legOut"]; hidden: boolean }) {
+function Leg({
+  activity,
+  groupKey,
+  resolveDisplay,
+}: {
+  activity: ProposedPair["legOut"];
+  groupKey: string;
+  resolveDisplay: ResolveDisplay;
+}) {
+  const { name, amountText } = resolveDisplay(activity, groupKey);
   return (
     <div className="space-y-0.5">
-      <div className="font-medium">{activity.accountName}</div>
+      <div className="font-medium">{name}</div>
       <div className="text-sm text-muted-foreground">
-        {formatDate(activity.date)} · {formatAmount(activity.amount, activity.currency, hidden)}
+        {formatDate(activity.date)} · {amountText}
       </div>
       {activity.comment ? (
         <div className="text-xs text-muted-foreground italic">{activity.comment}</div>
@@ -81,18 +193,21 @@ function Leg({ activity, hidden }: { activity: ProposedPair["legOut"]; hidden: b
 function LegChange({
   activity,
   newType,
-  hidden,
+  groupKey,
+  resolveDisplay,
 }: {
   activity: ProposedPair["legOut"];
   newType: string;
-  hidden: boolean;
+  groupKey: string;
+  resolveDisplay: ResolveDisplay;
 }) {
+  const { name, amountText } = resolveDisplay(activity, groupKey);
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
       <div>
-        <div className="font-medium">{activity.accountName}</div>
+        <div className="font-medium">{name}</div>
         <div className="text-xs text-muted-foreground">
-          {formatDate(activity.date)} · {formatAmount(activity.amount, activity.currency, hidden)}
+          {formatDate(activity.date)} · {amountText}
         </div>
       </div>
       <div className="text-xs text-right whitespace-nowrap">
@@ -109,13 +224,13 @@ function PairTable({
   processingKeys,
   onApprove,
   onDismiss,
-  privacyMode,
+  resolveDisplay,
 }: {
   pairs: ProposedPair[];
   processingKeys: Set<string>;
   onApprove: (pair: ProposedPair) => void;
   onDismiss: (pair: ProposedPair) => void;
-  privacyMode: boolean;
+  resolveDisplay: ResolveDisplay;
 }) {
   return (
     <Table>
@@ -138,16 +253,26 @@ function PairTable({
               </TableCell>
               <TableCell>
                 {pair.reclassifyOut ? (
-                  <LegChange activity={pair.legOut} newType={TRANSFER_OUT} hidden={privacyMode} />
+                  <LegChange
+                    activity={pair.legOut}
+                    newType={TRANSFER_OUT}
+                    groupKey={pair.key}
+                    resolveDisplay={resolveDisplay}
+                  />
                 ) : (
-                  <Leg activity={pair.legOut} hidden={privacyMode} />
+                  <Leg activity={pair.legOut} groupKey={pair.key} resolveDisplay={resolveDisplay} />
                 )}
               </TableCell>
               <TableCell>
                 {pair.reclassifyIn ? (
-                  <LegChange activity={pair.legIn} newType={TRANSFER_IN} hidden={privacyMode} />
+                  <LegChange
+                    activity={pair.legIn}
+                    newType={TRANSFER_IN}
+                    groupKey={pair.key}
+                    resolveDisplay={resolveDisplay}
+                  />
                 ) : (
-                  <Leg activity={pair.legIn} hidden={privacyMode} />
+                  <Leg activity={pair.legIn} groupKey={pair.key} resolveDisplay={resolveDisplay} />
                 )}
               </TableCell>
               <TableCell className="max-w-xs">
@@ -263,7 +388,8 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
   const api = ctx.api;
   const { dismissed, dismiss, loaded: dismissedLoaded } = useDismissed(api);
   const { settings, setSettings } = useMatchSettings(api);
-  const { privacyMode, setPrivacyMode } = usePrivacyMode(api);
+  const { privacyLevel, toggleHidden, toggleUltra } = usePrivacyMode(api);
+  const resolveDisplay = useResolveDisplay(privacyLevel);
 
   const [pairs, setPairs] = useState<ProposedPair[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -345,15 +471,11 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
               before linking.
             </CardDescription>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            aria-label={privacyMode ? "Show amounts" : "Hide amounts"}
-            onClick={() => setPrivacyMode(!privacyMode)}
-          >
-            {privacyMode ? <Icons.EyeOff className="h-4 w-4" /> : <Icons.Eye className="h-4 w-4" />}
-          </Button>
+          <PrivacyToggleButton
+            privacyLevel={privacyLevel}
+            toggleHidden={toggleHidden}
+            toggleUltra={toggleUltra}
+          />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-4">
@@ -429,7 +551,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                   processingKeys={processingKeys}
                   onApprove={handleApprove}
                   onDismiss={handleDismiss}
-                  privacyMode={privacyMode}
+                  resolveDisplay={resolveDisplay}
                 />
               </CardContent>
             </Card>
@@ -454,7 +576,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                   processingKeys={processingKeys}
                   onApprove={handleApprove}
                   onDismiss={handleDismiss}
-                  privacyMode={privacyMode}
+                  resolveDisplay={resolveDisplay}
                 />
               </CardContent>
             </Card>
