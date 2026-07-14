@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the wealthfolio_transfers addon will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial addon structure and setup
+- Transfer pair scanning workflow with review-first approvals
+- Detection of unlinked transfer-typed legs (`TRANSFER_OUT`/`TRANSFER_IN`)
+- Heuristic matching for untyped transfer-like pairs (`WITHDRAWAL`/`DEPOSIT`)
+- Reclassify-then-link flow for pairs that need type correction
+- Persistent dismissed-pair storage to prevent re-surfacing dismissed matches
+- Privacy modes for hiding or disguising displayed values
 
 ### Changed
+
+- Metadata now reflects active development (`0.1.0`)
+- Project naming/description aligned to "Transfer Finder"
 
 ### Deprecated
 
@@ -19,24 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Matching and scan orchestration test coverage for pair merging and candidate behavior
+
 ### Security
 
-## [1.0.0] - {{currentDate}}
+- No security changes in this cycle
 
-### Added
+### Dependency
 
-- Initial release of wealthfolio_transfers addon
-- Basic addon functionality and core features
-- Integration with Wealthfolio addon SDK v1.0.0
-- Sidebar navigation integration for easy access
-- Responsive design for all screen sizes
+- Requires Wealthfolio transaction-linking addon API changes proposed in [PR #1307](https://github.com/wealthfolio/wealthfolio/pull/1307)
 
-### Features
+## [0.1.0] - 2026-07-13
 
-- Scan transactions for unmarked transfer pairs and link them
-- User-friendly interface
-- Compatible with Wealthfolio platform
+### Initial
 
-### Permissions
-
-- UI components access for sidebar and routing
+- Initial active-development release of transfer finder addon
+- Route and sidebar integration for transfer review UI
+- Scan pipeline for transfer candidate detection and linking

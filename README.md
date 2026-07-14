@@ -1,27 +1,9 @@
-# wealthfolio_transfers
+# transfer finder wealthfolio addon
 
-Scan transactions for unmarked transfer pairs and link them
+Finds likely transfer pairs in activity history and lets you link them.
 
-## Development
+It scans cash-movement activities, proposes matches, and supports linking pairs that are already transfer-typed or need reclassification first.
 
-```bash
-# Install dependencies
-npm install
+## Requirement
 
-# Start development server
-npm run dev:server
-
-# Build for production
-npm run build
-
-# Package addon
-npm run bundle
-```
-
-## Features
-
-- Add your features here
-
-## License
-
-MIT
+This addon requires the Wealthfolio transaction-linking addon API changes proposed in PR #1307 - https://github.com/wealthfolio/wealthfolio/pull/1307

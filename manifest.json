@@ -1,8 +1,8 @@
 {
   "id": "wealthfolio-transfers",
-  "name": "Wealthfolio Transfers",
-  "version": "1.0.0",
-  "description": "Scan transactions for unmarked transfer pairs and link them",
+  "name": "Transfer Finder",
+  "version": "0.1.0",
+  "description": "Find likely transfer pairs in activity history and link them",
   "author": "Mark Rickert",
   "main": "dist/addon.js",
   "sdkVersion": "3.6.2",
@@ -41,12 +41,12 @@
         "findTransferMatchCandidates",
         "linkTransfer"
       ],
-      "purpose": "Detect unmarked internal transfer pairs and link them"
+      "purpose": "Detect and link internal transfer pairs (requires transaction-linking addon API from wealthfolio PR #1307)"
     }
   ],
   "network": {
     "allowedHosts": []
   },
-  "keywords": ["wealthfolio", "addon", "transfers"],
+  "keywords": ["wealthfolio", "addon", "transfers", "transfer-finder"],
   "license": "MIT"
 }
