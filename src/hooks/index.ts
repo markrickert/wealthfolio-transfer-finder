@@ -1,3 +1,1 @@
-// Export your custom hooks here
-// Example:
-// export { useMyHook } from './useMyHook';
+export { useResolveDisplay } from "./useResolveDisplay";
