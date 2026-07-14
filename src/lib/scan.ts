@@ -38,14 +38,19 @@ export async function scanForTransferPairs(
   const fetchedCount = activities.length;
 
   const [linkedCandidates, unmarkedPairs] = await Promise.all([
-    findLinkedTransferCandidates(api, activities, settings, (progress) =>
-      onProgress?.({
-        stage: progress.stage,
-        current: fetchedCount + progress.current,
-        total: fetchedCount + progress.total,
-      }),
+    findLinkedTransferCandidates(
+      api,
+      activities,
+      settings,
+      (progress) =>
+        onProgress?.({
+          stage: progress.stage,
+          current: fetchedCount + progress.current,
+          total: fetchedCount + progress.total,
+        }),
+      dismissed,
     ),
-    Promise.resolve(matchUnmarkedPairs(activities, settings)),
+    Promise.resolve(matchUnmarkedPairs(activities, settings, dismissed)),
   ]);
 
   return combineProposedPairs([linkedCandidates, unmarkedPairs], dismissed);

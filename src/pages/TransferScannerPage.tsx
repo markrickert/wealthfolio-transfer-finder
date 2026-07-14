@@ -251,7 +251,7 @@ function FadeIn({ children }: { children: ReactNode }) {
 
 export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
   const api = ctx.api;
-  const { dismissed, dismiss } = useDismissed(api);
+  const { dismissed, dismiss, loaded: dismissedLoaded } = useDismissed(api);
   const { settings, setSettings } = useMatchSettings(api);
 
   const [pairs, setPairs] = useState<ProposedPair[]>([]);
@@ -274,6 +274,7 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
   }, [showCelebration]);
 
   async function handleScan() {
+    if (!dismissedLoaded) return;
     setScanning(true);
     setScanProgress(null);
     try {
@@ -363,8 +364,8 @@ export function TransferScannerPage({ ctx }: { ctx: AddonContext }) {
                 }
               />
             </div>
-            <Button onClick={() => void handleScan()} disabled={scanning}>
-              Scan for Transfer Pairs
+            <Button onClick={() => void handleScan()} disabled={scanning || !dismissedLoaded}>
+              {dismissedLoaded ? "Scan for Transfer Pairs" : "Loading preferences…"}
             </Button>
           </div>
         </CardContent>

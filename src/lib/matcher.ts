@@ -29,6 +29,21 @@ function dateDiffDays(a: ActivityDetails, b: ActivityDetails): number {
   return Math.abs(timeOf(a) - timeOf(b)) / MS_PER_DAY;
 }
 
+/** First index in a time-sorted array whose activity time is >= `time`. */
+function lowerBoundByTime(sorted: ActivityDetails[], time: number): number {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (timeOf(sorted[mid]) < time) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
 interface Candidate {
   out: ActivityDetails;
   in: ActivityDetails;
@@ -73,10 +88,17 @@ function describe(candidate: Candidate): { reasons: string[]; warnings: string[]
  * bucket, not a naive left-to-right scan) so that recurring same-amount
  * transfers on different dates each match their own nearest counterpart
  * instead of cross-wiring to the wrong real pair.
+ *
+ * Candidates are bounded by date via a sorted-bucket binary search rather
+ * than comparing every outflow against every inflow in the currency - as
+ * transaction history grows over the years, most of it falls outside the
+ * match window anyway, so this keeps the comparison cost proportional to
+ * "activity near this date" instead of "all activity ever."
  */
 export function matchUnmarkedPairs(
   activities: ActivityDetails[],
   settings: MatchSettings = DEFAULT_SETTINGS,
+  dismissed: ReadonlySet<string> = new Set(),
 ): ProposedPair[] {
   const outflows = activities.filter((a) => a.activityType === WITHDRAWAL);
   const inflows = activities.filter((a) => a.activityType === DEPOSIT);
@@ -91,20 +113,28 @@ export function matchUnmarkedPairs(
       inflowsByCurrency.set(key, [inflow]);
     }
   }
+  for (const bucket of inflowsByCurrency.values()) {
+    bucket.sort((a, b) => timeOf(a) - timeOf(b));
+  }
 
+  const windowMs = settings.windowDays * MS_PER_DAY;
   const candidates: Candidate[] = [];
   for (const out of outflows) {
     const bucket = inflowsByCurrency.get(currencyOf(out)) ?? [];
-    for (const inflow of bucket) {
+    const outTime = timeOf(out);
+    const startIdx = lowerBoundByTime(bucket, outTime - windowMs);
+
+    for (let i = startIdx; i < bucket.length; i += 1) {
+      const inflow = bucket[i];
+      if (timeOf(inflow) > outTime + windowMs) break; // bucket is sorted - nothing further can be in range
+
       if (inflow.accountId === out.accountId) continue;
+      if (dismissed.has(pairKey(out.id, inflow.id))) continue;
 
       const amountDiff = Math.abs(amountOf(out) - amountOf(inflow));
       if (amountDiff > settings.amountTolerance) continue;
 
-      const dayDiff = dateDiffDays(out, inflow);
-      if (dayDiff > settings.windowDays) continue;
-
-      candidates.push({ out, in: inflow, amountDiff, dayDiff });
+      candidates.push({ out, in: inflow, amountDiff, dayDiff: dateDiffDays(out, inflow) });
     }
   }
 
@@ -153,6 +183,7 @@ export async function findLinkedTransferCandidates(
   activities: ActivityDetails[],
   settings: MatchSettings = DEFAULT_SETTINGS,
   onProgress?: (progress: ScanProgress) => void,
+  dismissed: ReadonlySet<string> = new Set(),
 ): Promise<ProposedPair[]> {
   const byId = new Map(activities.map((a) => [a.id, a] as const));
   const transferLegs = activities.filter(
@@ -204,7 +235,14 @@ export async function findLinkedTransferCandidates(
       continue;
     }
 
-    const best = candidates.find((c) => unpairedIds.has(c.activity.id) && !usedIds.has(c.activity.id));
+    // Skip candidates whose pairing was already dismissed, so a dismissed
+    // top match doesn't block a viable second-best match from ever surfacing.
+    const best = candidates.find(
+      (c) =>
+        unpairedIds.has(c.activity.id) &&
+        !usedIds.has(c.activity.id) &&
+        !dismissed.has(pairKey(leg.id, c.activity.id)),
+    );
     if (!best) continue;
 
     const counterpart = byId.get(best.activity.id);
