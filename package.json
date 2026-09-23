@@ -1,6 +1,6 @@
 {
   "name": "wealthfolio-transfer-finder-addon",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Find likely transfer pairs in activity history and link them",
   "type": "module",
   "main": "dist/addon.js",

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-23
+
 ### Added
 
 - Transfer pair scanning workflow with review-first approvals
@@ -20,10 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Metadata now reflects active development (`0.1.0`)
 - Project naming/description aligned to "Transfer Finder"
-
-### Deprecated
-
-### Removed
 
 ### Fixed
 
