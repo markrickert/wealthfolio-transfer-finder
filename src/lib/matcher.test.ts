@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ActivityType, ActivityDetails } from "@wealthfolio/addon-sdk";
+import type { ActivityType, ActivityDetails, HostAPI } from "@wealthfolio/addon-sdk";
 import { BUY, DEPOSIT, TRANSFER_IN, TRANSFER_OUT, WITHDRAWAL } from "./activityTypes";
-import { matchUnmarkedPairs } from "./matcher";
+import { findUnpairedTransferLegs, matchUnmarkedPairs } from "./matcher";
 
 let counter = 0;
 
@@ -186,5 +186,28 @@ describe("matchUnmarkedPairs", () => {
     );
 
     expect(pairs).toHaveLength(0);
+  });
+});
+
+describe("findUnpairedTransferLegs", () => {
+  it("treats a null transfer pair as unpaired and skips linked or missing legs", async () => {
+    const unpaired = activity({ type: TRANSFER_OUT, accountId: "checking", amount: 100, day: 0 });
+    const linked = activity({ type: TRANSFER_IN, accountId: "savings", amount: 100, day: 0 });
+    const missing = activity({ type: TRANSFER_IN, accountId: "savings", amount: 50, day: 0 });
+    const deposit = activity({ type: DEPOSIT, accountId: "savings", amount: 100, day: 0 });
+
+    const api = {
+      activities: {
+        getTransferPair: async (id: string) => {
+          if (id === linked.id) return { transferOut: {}, transferIn: {} };
+          if (id === missing.id) throw new Error("not found");
+          return null;
+        },
+      },
+    } as unknown as HostAPI;
+
+    const result = await findUnpairedTransferLegs(api, [unpaired, linked, missing, deposit]);
+
+    expect(result.legs.map((leg) => leg.id)).toEqual([unpaired.id]);
   });
 });

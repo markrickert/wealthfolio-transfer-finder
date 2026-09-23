@@ -202,7 +202,7 @@ export interface UnpairedTransferLegs {
  * Activities already typed TRANSFER_IN/TRANSFER_OUT but not yet linked to a
  * pair. ActivityDetails carries no sourceGroupId (the SDK deliberately omits
  * it), so "already paired" is determined by calling getTransferPair per leg:
- * it rejects when the activity has no existing pair. Shared by Path A (which
+ * it resolves null when the activity has no existing pair. Shared by Path A (which
  * matches these against each other) and Path B (which matches them against
  * plain DEPOSIT/WITHDRAWAL legs), so the check only runs once per scan.
  */
@@ -220,10 +220,10 @@ export async function findUnpairedTransferLegs(
   await Promise.all(
     transferLegs.map(async (leg) => {
       try {
-        await api.activities.getTransferPair(leg.id);
-        // Resolves => leg already belongs to a pair, so it's not a candidate.
+        const pair = await api.activities.getTransferPair(leg.id);
+        if (!pair) unpaired.push(leg);
       } catch {
-        unpaired.push(leg);
+        // Rejects only when the activity no longer exists - not a candidate.
       } finally {
         checked += 1;
         onProgress?.({ stage: "checking-pairs", current: checked, total: transferLegs.length });

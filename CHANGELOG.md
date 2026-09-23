@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Unpaired transfer-leg detection now handles `getTransferPair` returning `null` for unlinked activities, matching the merged host API
 - Matching and scan orchestration test coverage for pair merging and candidate behavior
 
 ### Security
@@ -35,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Dependency
 
-- Requires Wealthfolio transaction-linking addon API changes proposed in [PR #1307](https://github.com/wealthfolio/wealthfolio/pull/1307)
+- Requires Wealthfolio 3.9.0+ for the addon transfer-linking API merged in [PR #1307](https://github.com/wealthfolio/wealthfolio/pull/1307)
 
 ## [0.1.0] - 2026-07-13
 

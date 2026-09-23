@@ -36,15 +36,11 @@ export default defineConfig({
       formats: ["es"],
     },
     outDir: "dist",
+    target: ["chrome107", "edge107", "firefox104", "safari16"],
     minify: true,
     sourcemap: false,
     rollupOptions: {
       external: hostProvidedDependencies,
-    },
-    watch: {
-      // Watch mode options for better hot reloading
-      include: ["src/**"],
-      exclude: ["node_modules/**", "dist/**"],
     },
   },
 });
