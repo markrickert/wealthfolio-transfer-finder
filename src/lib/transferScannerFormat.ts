@@ -24,9 +24,27 @@ export function formatScanProgress(progress: ScanProgress): string {
   return `${SCAN_STAGE_LABEL[progress.stage]}... (${progress.current}/${progress.total})`;
 }
 
+// Share of the bar each stage fills, in stage order, sized by how long each
+// takes rather than how many items it touches: fetching is a handful of
+// paged queries, checking-pairs is cheap indexed lookups run in parallel,
+// and matching runs one host-side full-activity scan per unpaired leg,
+// sequentially - it dominates wall-clock time.
+const SCAN_STAGE_WEIGHT: [ScanProgress["stage"], number][] = [
+  ["fetching", 5],
+  ["checking-pairs", 10],
+  ["matching", 85],
+];
+
 export function scanProgressPercent(progress: ScanProgress): number {
-  if (progress.total <= 0) return 0;
-  return Math.min(100, (progress.current / progress.total) * 100);
+  let percent = 0;
+  for (const [stage, weight] of SCAN_STAGE_WEIGHT) {
+    if (stage === progress.stage) {
+      const fraction = progress.total > 0 ? progress.current / progress.total : 0;
+      return Math.min(100, percent + weight * Math.min(1, fraction));
+    }
+    percent += weight;
+  }
+  return percent;
 }
 
 export const CONFIDENCE_BADGE: Record<

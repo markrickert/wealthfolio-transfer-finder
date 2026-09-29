@@ -37,41 +37,14 @@ export async function scanForTransferPairs(
     onProgress?.({ stage: "fetching", current: loaded, total }),
   );
 
-  // Each phase below reports its own progress starting at 0 - offset by the
-  // prior phases' totals so the whole scan is one continuous current/total
-  // range instead of resetting per phase.
-  const fetchedCount = activities.length;
-  let transferLegsTotal = 0;
-
-  const unpaired = await findUnpairedTransferLegs(api, activities, (progress) => {
-    transferLegsTotal = progress.total;
-    onProgress?.({
-      stage: progress.stage,
-      current: fetchedCount + progress.current,
-      total: fetchedCount + progress.total,
-    });
-  });
-
-  const matchingBase = fetchedCount + transferLegsTotal;
+  const unpaired = await findUnpairedTransferLegs(api, activities, onProgress);
 
   // findLinkedTransferCandidates (Path A: unpaired transfer legs against each
   // other) and matchUnmarkedPairs (Path B: plain deposit/withdrawal legs,
   // including mixed pairs against an unpaired transfer leg) both consume the
   // same unpaired-legs result computed once above.
   const [linkedCandidates, unmarkedPairs] = await Promise.all([
-    findLinkedTransferCandidates(
-      api,
-      activities,
-      unpaired,
-      settings,
-      (progress) =>
-        onProgress?.({
-          stage: progress.stage,
-          current: matchingBase + progress.current,
-          total: matchingBase + progress.total,
-        }),
-      dismissed,
-    ),
+    findLinkedTransferCandidates(api, activities, unpaired, settings, onProgress, dismissed),
     Promise.resolve(matchUnmarkedPairs(activities, settings, dismissed, unpaired.ids)),
   ]);
 

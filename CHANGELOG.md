@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Scans skipped the newest 500 deposit/withdrawal/transfer activities because pagination started at page 1 instead of 0
+- Approving a pair that needs a cash leg reclassified failed with "Asset updates need either asset_id or symbol"
+- Scan progress bar is weighted by how long each stage takes, so it no longer jumps near the end while loading and then crawls through matching
 
 ## [0.1.1] - 2026-09-23
 

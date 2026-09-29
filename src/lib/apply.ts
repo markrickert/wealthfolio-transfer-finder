@@ -14,7 +14,9 @@ function toActivityUpdate(activity: ActivityDetails, activityType: string): Acti
     activityType,
     subtype: activity.subtype ?? null,
     activityDate: activity.date,
-    asset: { id: activity.assetId },
+    // Cash legs come back with assetId "" - the host rejects { id: "" }, and
+    // omitting asset preserves the (absent) asset.
+    asset: activity.assetId ? { id: activity.assetId } : undefined,
     quantity: activity.quantity,
     unitPrice: activity.unitPrice,
     amount: activity.amount,
