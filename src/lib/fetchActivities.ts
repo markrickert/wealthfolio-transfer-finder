@@ -17,7 +17,7 @@ export async function fetchAllActivities(
   onProgress?: (loaded: number, total: number) => void,
 ): Promise<ActivityDetails[]> {
   const all: ActivityDetails[] = [];
-  let page = 1;
+  let page = 0;
 
   while (true) {
     const response = await api.activities.search(

@@ -1,7 +1,7 @@
 {
   "id": "wealthfolio-transfers",
   "name": "Transfer Finder",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Find likely transfer pairs in activity history and link them",
   "author": "Mark Rickert",
   "main": "dist/addon.js",
